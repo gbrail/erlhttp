@@ -2,7 +2,7 @@
 
 -version(0.1).
 -on_load(init/0).
--export([new/0, new/1, parse_raw/2, is_upgrade/1, should_keepalive/1, update/2, parse/1, new_parser_raw/1, clear_body_results/1]).
+-export([new/0, new/1, parse_raw/2, is_upgrade/1, should_keepalive/1, update/2, parse/1, new_parser_raw/1]).
 -include_lib("eunit/include/eunit.hrl").
 
 init() ->
@@ -44,6 +44,7 @@ new(response) ->
 parse({Parser, Mode, State, Rest, Result}) ->
     case parse(Mode, State, Rest, Result) of
         {more, {Mode1, State1, Rest1, Result1}} -> {more, {Parser, Mode1, State1, Rest1, Result1}};
+        {more, {<<>>, Mode1, State1, Rest1, Result1}} -> {more, {Parser, Mode1, State1, Rest1, Result1}};
         {Other, {Mode1, State1, Rest1, []}, Result1} -> {Other, Result1, {Parser, Mode1, State1, Rest1, []} };
         {Other, {Mode1, State1, Rest1, <<Body/binary>>}, Result1} -> {Other, Result1, {Parser, Mode1, State1, Rest1, Body} }
     end.
@@ -71,7 +72,6 @@ parse(body, State, Rest, Result) ->
 parse(done, State, Rest, Result) ->
     parse_done(State, Rest, Result).
 
-
 parse_request(State, [Next|Rest], Result) ->
     %io:format("Request: ~p ~p ~p~n", [State, Next, Rest]),
     case {State, Next} of
@@ -85,22 +85,26 @@ parse_request(State, [Next|Rest], Result) ->
     end;
 
 parse_request(State, [], Result) ->
-    {more, {request, State, [], Result}, Result}.
+    %io:format("Request: ~p []~n", [State]),
+    {more, {request, State, [], Result}};
+parse_request(State, [], []) ->
+    %io:format("Request: ~p [] []~n", [State]),
+    {more, {request, State, [], []}}.
 
 parse_response(State, [Next|Rest], Result) ->
-    io:format("Response: ~p, ~p ~p ~p~n", [State, Next, Rest, Result]),
     case {State, Next} of
         {undefined, {header_field, _}}      ->  {response, {headers, undefined, [Next|Rest], []}, Result};
         {undefined, {body, _}}              ->  {response, {body, undefined, [Next|Rest], <<>>}, Result};
         {undefined, done}                   ->  {response, {done, undefined, [Next|Rest], []}, Result};
         {undefined, Version={version, _}}   ->  parse_response(undefined, Rest, [Version|Result]);
-        {undefined, Status={status_code, _}} ->  parse_response(undefined, Rest, [Status|Result]);
+        {undefined, Status={status_code, _}} -> parse_response(undefined, Rest, [Status|Result]);
         {undefined, _}                      ->  parse_response(undefined, Rest, [Next|Result])
     end;
 
 parse_response(State, [], Result) ->
-    io:format("Final parse response: ~p ~p~n", [ State, Result ]),
-    {more, {response, State, [], Result}, Result}.
+    {more, {response, State, [], Result}};
+parse_response(State, [], []) ->
+    {more, {response, State, [], []}}.
 
 % Headers
 
@@ -150,20 +154,25 @@ parse_headers(State, [Next|Rest], Result) ->
     end;
 
 parse_headers(State, [], Result) ->
-    {more, {headers, State, [], Result}, Result}.
+    {more, {headers, State, [], Result}}.
+
+parse_body(undefined, [{body, Body}|[]], Result) ->
+  NewBody = <<Result/binary,Body/binary>>,
+  {body_chunk, {body, undefined, [], NewBody}, NewBody};
+
+parse_body(undefined, [{body, Body}|Rest], []) ->
+  parse_body(undefined, Rest, Body);
 
 parse_body(undefined, [{body, Body}|Rest], Result) ->
-    parse_body(undefined, Rest, <<Result/binary,Body/binary>>);
-
-parse_body(undefined, [], Result) ->
-    {body_chunk, {body, undefined, [], Result}, Result};
+  parse_body(undefined, Rest, <<Result/binary, Body/binary>>);
 
 parse_body(undefined, [done], Result) ->
-    {body_chunk, {done, undefined, [done], []}, Result}.
+  {body_chunk, {done, undefined, [done], Result}, Result};
+
+parse_body(undefined, [], _) ->
+  {more, {body, undefined, [], []}}.
 
 parse_done(undefined, [done], _Result) ->
     {done, {done, undefined, [done], []}, done}.
 
-clear_body_results({Parser, body, undefined, Rest, _Result}) ->
-    {Parser, body, undefined, Rest, <<>>}.
 

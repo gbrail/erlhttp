@@ -3,17 +3,6 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-% TODO Implement proper tests
-
-% {ok,[done,
-%      {header_value,<<"www.example.com">>},
-%      {header_field,<<"Host">>},
-%      {version,{1,1}},
-%      {url,<<"/index.html">>},
-%      {method,get}],
-%     <<>>}
-    
-    
 simple_test() ->
     {ok, Parser} = erlhttp:new(),
     Request = <<"GET /index.html HTTP/1.1\r\n",
@@ -141,7 +130,6 @@ chunk_test() ->
     %?debugFmt("Parsing: ~p~n", [ Parser3 ]),
     {body_chunk, Result2, Parser4} = erlhttp:parse(Parser3),
     ?assertEqual(Result2, <<"Hello, World!">>),
-    erlhttp:clear_body_results(Parser3),
 
     %?debugFmt("Parsing: ~p~n", [ Parser4 ]),
     {done, done, _} = erlhttp:parse(Parser4).
@@ -170,7 +158,6 @@ response_chunk_test() ->
     %?debugFmt("Parsing: ~p~n", [ Parser3 ]),
     {body_chunk, Result2, Parser4} = erlhttp:parse(Parser3),
     ?assertEqual(Result2, <<"Hello, World!">>),
-    erlhttp:clear_body_results(Parser3),
 
     %?debugFmt("Parsing: ~p~n", [ Parser4 ]),
     {done, done, _} = erlhttp:parse(Parser4).
@@ -206,7 +193,6 @@ chunks_test() ->
 
     {body_chunk, Result2, Parser4} = erlhttp:parse(Parser3),
     ?assertEqual(Result2, <<"Hello, World! This is some chunked data.">>),
-    erlhttp:clear_body_results(Parser3),
 
     {done, done, _} = erlhttp:parse(Parser4).
 
@@ -224,7 +210,6 @@ body_pipeline_test() ->
     {headers, _Result1, Parser3} = erlhttp:parse(Parser2),
     {body_chunk, Result2, Parser4} = erlhttp:parse(Parser3),
     ?assertEqual(Result2, <<"Hello">>),
-    erlhttp:clear_body_results(Parser3),
     {done, done, _} = erlhttp:parse(Parser4),
 
     {ok, ParserA} = erlhttp:new(request),
@@ -234,7 +219,6 @@ body_pipeline_test() ->
     {headers, _ResultA2, ParserA3} = erlhttp:parse(ParserA2),
     {body_chunk, ResultA3, ParserA4} = erlhttp:parse(ParserA3),
     ?assertEqual(ResultA3, <<"World!">>),
-    erlhttp:clear_body_results(ParserA3),
     {done, done, _} = erlhttp:parse(ParserA4).
 
 map_headers([Header | Headers], HeaderMap) ->
