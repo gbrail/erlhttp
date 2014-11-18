@@ -24,7 +24,7 @@ erlhttp:parse(Parser2),
 
 ```{headers, Result, Parser}``` finished parsing headers
 
-```{body, Result, Parser}``` finished parsing a body chunk
+```{body_chunk, Result, Parser}``` finished parsing a body chunk
 
 ```{done, Result, Parser}``` done parsing
 

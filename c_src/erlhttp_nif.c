@@ -20,6 +20,7 @@ static ERL_NIF_TERM k_atom_body;
 static ERL_NIF_TERM k_atom_done;
 
 static ERL_NIF_TERM k_atom_method;
+static ERL_NIF_TERM k_atom_status_code;
 
 static ERL_NIF_TERM k_atom_method_delete;
 static ERL_NIF_TERM k_atom_method_get;
@@ -75,7 +76,7 @@ void emit_version(http_parser *parser)
 
 #define EMIT_VERSION_ONCE(PARSER) if (!((parser_data *)PARSER->data)->version_done) emit_version(PARSER)
 
-int on_message_begin (http_parser *parser)
+int on_request_message_begin(http_parser *parser)
 {
     parser_data *data = (parser_data *)parser->data;
     
@@ -114,6 +115,23 @@ int on_message_begin (http_parser *parser)
     return 0;
 }
 
+int on_response_message_begin(http_parser* parser)
+{
+    return 0;
+}
+
+int on_message_begin (http_parser *parser)
+{
+    switch (parser->type) {
+       case HTTP_REQUEST:
+       case HTTP_BOTH:
+         return on_request_message_begin(parser);
+       case HTTP_RESPONSE:
+         return on_response_message_begin(parser);
+       default:
+         return -1;
+    }
+}
 
 int on_url (http_parser *parser, const char *at, size_t length)
 {
@@ -123,6 +141,12 @@ int on_url (http_parser *parser, const char *at, size_t length)
 
 int on_status_complete (http_parser *parser)
 {
+    parser_data *data = (parser_data *)parser->data;
+    data->result =
+        enif_make_list_cell(
+            data->env,
+            enif_make_tuple2(data->env, k_atom_status_code, enif_make_int(data->env, parser->status_code)),
+            data->result);
     return 0;
 }
 
@@ -317,6 +341,7 @@ static int load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
     k_atom_body                 = enif_make_atom(env, "body");
     k_atom_done                 = enif_make_atom(env, "done");
     k_atom_method               = enif_make_atom(env, "method");
+    k_atom_status_code          = enif_make_atom(env, "status_code");
     
     k_atom_method_delete        = enif_make_atom(env, "delete");
     k_atom_method_get           = enif_make_atom(env, "get");

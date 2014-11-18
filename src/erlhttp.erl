@@ -2,7 +2,7 @@
 
 -version(0.1).
 -on_load(init/0).
--export([new/0, parse_raw/2, is_upgrade/1, should_keepalive/1, update/2, parse/1, new_parser_raw/1, clear_body_results/1]).
+-export([new/0, new/1, parse_raw/2, is_upgrade/1, should_keepalive/1, update/2, parse/1, new_parser_raw/1, clear_body_results/1]).
 -include_lib("eunit/include/eunit.hrl").
 
 init() ->
@@ -31,9 +31,15 @@ should_keepalive(_Parser) ->
 
 
 new() ->
-    {ok, Parser} = new_parser_raw (0),
-    {ok, {Parser, request, undefined, [], []}}.
+    new(request).
 
+new(request) ->
+    {ok, Parser} = new_parser_raw (0),
+    {ok, {Parser, request, undefined, [], []}};
+
+new(response) ->
+    {ok, Parser} = new_parser_raw (1),
+    {ok, {Parser, response, undefined, [], []}}.
 
 parse({Parser, Mode, State, Rest, Result}) ->
     case parse(Mode, State, Rest, Result) of
@@ -53,6 +59,9 @@ update(Bin,{Parser, Mode, State, Rest, Result}) ->
 parse(request, State, Rest, Result) ->
     parse_request(State, Rest, Result);
 
+parse(response, State, Rest, Result) ->
+    parse_response(State, Rest, Result);
+
 parse(headers, State, Rest, Result) ->
     parse_headers(State, Rest, Result);
 
@@ -64,6 +73,7 @@ parse(done, State, Rest, Result) ->
 
 
 parse_request(State, [Next|Rest], Result) ->
+    %io:format("Request: ~p ~p ~p~n", [State, Next, Rest]),
     case {State, Next} of
         {undefined, {header_field, _}}      ->  {request, {headers, undefined, [Next|Rest], []}, Result};
         {undefined, {body, _}}              ->  {request, {body, undefined, [Next|Rest], <<>>}, Result};
@@ -77,6 +87,20 @@ parse_request(State, [Next|Rest], Result) ->
 parse_request(State, [], Result) ->
     {more, {request, State, [], Result}, Result}.
 
+parse_response(State, [Next|Rest], Result) ->
+    io:format("Response: ~p, ~p ~p ~p~n", [State, Next, Rest, Result]),
+    case {State, Next} of
+        {undefined, {header_field, _}}      ->  {response, {headers, undefined, [Next|Rest], []}, Result};
+        {undefined, {body, _}}              ->  {response, {body, undefined, [Next|Rest], <<>>}, Result};
+        {undefined, done}                   ->  {response, {done, undefined, [Next|Rest], []}, Result};
+        {undefined, Version={version, _}}   ->  parse_response(undefined, Rest, [Version|Result]);
+        {undefined, Status={status_code, _}} ->  parse_response(undefined, Rest, [Status|Result]);
+        {undefined, _}                      ->  parse_response(undefined, Rest, [Next|Result])
+    end;
+
+parse_response(State, [], Result) ->
+    io:format("Final parse response: ~p ~p~n", [ State, Result ]),
+    {more, {response, State, [], Result}, Result}.
 
 % Headers
 
