@@ -38,7 +38,8 @@ new() ->
 parse({Parser, Mode, State, Rest, Result}) ->
     case parse(Mode, State, Rest, Result) of
         {more, {Mode1, State1, Rest1, Result1}} -> {more, {Parser, Mode1, State1, Rest1, Result1}};
-        {Other, {Mode1, State1, Rest1, []}, Result1} -> {Other, Result1, {Parser, Mode1, State1, Rest1, []} }
+        {Other, {Mode1, State1, Rest1, []}, Result1} -> {Other, Result1, {Parser, Mode1, State1, Rest1, []} };
+        {Other, {Mode1, State1, Rest1, <<Body/binary>>}, Result1} -> {Other, Result1, {Parser, Mode1, State1, Rest1, Body} }
     end.
 
 update(Bin,{Parser, Mode, State, Rest, Result}) ->
