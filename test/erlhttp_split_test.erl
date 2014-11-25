@@ -19,12 +19,12 @@ response_split_test() ->
   test_split(Response, response, 0, Len, <<>>, Response).
 
 test_split(Request, Mode, 0, TotalLen, First, Last) ->
-  ?debugFmt("test: 1", []),
+  %?debugFmt("test: 1", []),
   test_split(Request, Mode, 1, TotalLen,
              binary:part(Request, 0, 1),
              binary:part(Request, 1, (TotalLen - 1)));
 test_split(Request, Mode, Pos, TotalLen, First, Last) ->
-  ?debugFmt("test: ~p, ~p~n", [ Pos, TotalLen ]),
+  %?debugFmt("test: ~p, ~p~n", [ Pos, TotalLen ]),
   %?debugFmt("First: ~p~n", [ First ]),
   %?debugFmt("Last: ~p~n", [ Last ]),
   {ok, EmptyParser} = erlhttp:new(Mode),

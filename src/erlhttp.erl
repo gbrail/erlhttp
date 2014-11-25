@@ -23,10 +23,10 @@ new_parser_raw(_Type) ->
 parse_raw(_Parser,_Bin) ->
     exit(nif_library_not_loaded).
 
-is_upgrade(_Parser) ->
+is_upgrade_raw(_Parser) ->
     exit(nif_library_not_loaded).
 
-should_keepalive(_Parser) ->
+should_keepalive_raw(_Parser) ->
     exit(nif_library_not_loaded).
 
 
@@ -57,6 +57,12 @@ update(Bin,{Parser, Mode, State, Rest, Result}) ->
             Error
     end.
 
+should_keepalive({Parser, _Mode, _State, _Rest, _Result}) ->
+    should_keepalive_raw(Parser).
+
+is_upgrade({Parser, _Mode, _State, _Rest, _Result}) ->
+    is_upgrade_raw(Parser).
+
 parse(request, State, Rest, Result) ->
     parse_request(State, Rest, Result);
 
@@ -84,12 +90,12 @@ parse_request(State, [Next|Rest], Result) ->
         {undefined, _}                      ->  parse_request(undefined, Rest, [Next|Result])
     end;
 
-parse_request(State, [], Result) ->
-    %io:format("Request: ~p []~n", [State]),
-    {more, {request, State, [], Result}};
 parse_request(State, [], []) ->
     %io:format("Request: ~p [] []~n", [State]),
-    {more, {request, State, [], []}}.
+    {more, {request, State, [], []}};
+parse_request(State, [], Result) ->
+    %io:format("Request: ~p []~n", [State]),
+    {more, {request, State, [], Result}}.
 
 parse_response(State, [Next|Rest], Result) ->
     case {State, Next} of
@@ -101,10 +107,10 @@ parse_response(State, [Next|Rest], Result) ->
         {undefined, _}                      ->  parse_response(undefined, Rest, [Next|Result])
     end;
 
-parse_response(State, [], Result) ->
-    {more, {response, State, [], Result}};
 parse_response(State, [], []) ->
-    {more, {response, State, [], []}}.
+    {more, {response, State, [], []}};
+parse_response(State, [], Result) ->
+    {more, {response, State, [], Result}}.
 
 % Headers
 

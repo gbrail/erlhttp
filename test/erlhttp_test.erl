@@ -21,7 +21,9 @@ simple_test() ->
     ?assertEqual(maps:get(<<"Host">>, HeaderMap), <<"www.example.com">>),
     ?assertEqual(maps:get(<<"Foo">>, HeaderMap), <<"bar">>),
 
-    {done, done, _} = erlhttp:parse(Parser3).
+    {done, done, _} = erlhttp:parse(Parser3),
+    ?assertEqual(erlhttp:should_keepalive(Parser3), true),
+    ?assertEqual(erlhttp:is_upgrade(Parser3), false).
 
 simple_response_test() ->
     {ok, Parser} = erlhttp:new(response),
@@ -42,7 +44,9 @@ simple_response_test() ->
     ?assertEqual(maps:get(<<"Host">>, HeaderMap), <<"www.example.com">>),
     ?assertEqual(maps:get(<<"Foo">>, HeaderMap), <<"bar">>),
 
-    {done, done, _} = erlhttp:parse(Parser3).
+    {done, done, _} = erlhttp:parse(Parser3),
+    ?assertEqual(erlhttp:should_keepalive(Parser3), true),
+    ?assertEqual(erlhttp:is_upgrade(Parser3), false).
 
 body_test() ->
     {ok, Parser} = erlhttp:new(),
@@ -71,7 +75,9 @@ body_test() ->
     ?assertEqual(Result2, <<"Hello">>),
 
     %?debugFmt("Parsing: ~p~n", [ Parser4 ]),
-    {done, done, _} = erlhttp:parse(Parser4).
+    {done, done, _} = erlhttp:parse(Parser4),
+    ?assertEqual(erlhttp:should_keepalive(Parser4), true),
+    ?assertEqual(erlhttp:is_upgrade(Parser4), false).
 
 response_body_test() ->
     {ok, Parser} = erlhttp:new(response),
@@ -98,7 +104,9 @@ response_body_test() ->
     ?assertEqual(Result2, <<"Hello">>),
 
     %?debugFmt("Parsing: ~p~n", [ Parser4 ]),
-    {done, done, _} = erlhttp:parse(Parser4).
+    {done, done, _} = erlhttp:parse(Parser4),
+    ?assertEqual(erlhttp:should_keepalive(Parser4), true),
+    ?assertEqual(erlhttp:is_upgrade(Parser4), false).
 
 chunk_test() ->
     {ok, Parser} = erlhttp:new(),
@@ -220,6 +228,39 @@ body_pipeline_test() ->
     {body_chunk, ResultA3, ParserA4} = erlhttp:parse(ParserA3),
     ?assertEqual(ResultA3, <<"World!">>),
     {done, done, _} = erlhttp:parse(ParserA4).
+
+keep_alive_false_test() ->
+    {ok, Parser} = erlhttp:new(),
+    Request = <<"GET /index.html HTTP/1.1\r\n",
+                "Host: www.example.com\r\nFoo: bar\r\nConnection: close\r\n\r\n">>,
+
+    {ok, _Remaining, Parser1} = erlhttp:update(Request, Parser),
+    {request, _Result, Parser2} = erlhttp:parse(Parser1),
+    {headers, _Result1, Parser3} = erlhttp:parse(Parser2),
+    {done, done, _} = erlhttp:parse(Parser3),
+    ?assertEqual(erlhttp:should_keepalive(Parser3), false).
+
+keep_alive_response_false_test() ->
+    {ok, Parser} = erlhttp:new(response),
+    Request = <<"HTTP/1.1 200 OK\r\n",
+                "Host: www.example.com\r\nFoo: bar\r\nContent-Length: 0\r\nConnection: close\r\n\r\n">>,
+
+    {ok, _Remaining, Parser1} = erlhttp:update(Request, Parser),
+    {response, _Result, Parser2} = erlhttp:parse(Parser1),
+    {headers, _Result1, Parser3} = erlhttp:parse(Parser2),
+    {done, done, _} = erlhttp:parse(Parser3),
+    ?assertEqual(erlhttp:should_keepalive(Parser3), false).
+
+upgrade_responese_test() ->
+    {ok, Parser} = erlhttp:new(response),
+    Request = <<"HTTP/1.1 101 Switching Protocols\r\n",
+                "Host: www.example.com\r\nFoo: bar\r\nContent-Length: 0\r\nUpgrade: foobar\r\n\r\n">>,
+
+    {ok, _Remaining, Parser1} = erlhttp:update(Request, Parser),
+    {response, _Result, Parser2} = erlhttp:parse(Parser1),
+    {headers, _Result1, Parser3} = erlhttp:parse(Parser2),
+    {done, done, _} = erlhttp:parse(Parser3),
+    ?assertEqual(erlhttp:is_upgrade(Parser3), true).
 
 map_headers([Header | Headers], HeaderMap) ->
   {Key, Value} = Header,

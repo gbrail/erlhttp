@@ -304,8 +304,8 @@ static ErlNifFunc nif_funcs[] =
 {
     {"new_parser_raw", 1, new},
     {"parse_raw", 2, parse},
-    {"should_keepalive", 1, should_keepalive},
-    {"is_upgrade", 1, is_upgrade}
+    {"should_keepalive_raw", 1, should_keepalive},
+    {"is_upgrade_raw", 1, is_upgrade}
 };
 
 static int reload(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
